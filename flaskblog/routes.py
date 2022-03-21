@@ -2,6 +2,7 @@ from flask import redirect , render_template ,url_for,flash,redirect
 from flaskblog.forms import RegistrationForm, LoginForm
 from flaskblog.models import User, Post
 from flaskblog import app, db, bcrypt
+from flask_login import login_user, current_user, logout_user
 
 class ost():
     def __init__(self,author,title,content,date_posted):
@@ -29,6 +30,8 @@ def about():
 
 @app.route('/register',methods=['GET','POST'])
 def register():
+    if current_user.is_authenticated:
+        return redirect(url_for('home'))
     form=RegistrationForm()
     if(form.validate_on_submit()):
         hashed_password=bcrypt.generate_password_hash(form.password.data).decode('utf-8')
@@ -41,11 +44,19 @@ def register():
 
 @app.route('/login',methods=["GET","POST"])
 def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('home'))
     form=LoginForm()
     if(form.validate_on_submit()):
-        if form.email.data == 'pk@blog.com' and form.password.data=='password':
-            flash('logged in','success')
+        user=User.query.filter_by(email=form.email.data).first()
+        if user and bcrypt.check_password_hash(user.password,form.password.data):
+            login_user(user,remember=form.remember.data)
             return redirect(url_for('home'))
         else:
-            flash('log in unseccess full','danger')
+            flash('Log in unsuccessfull. Please check email and password','danger')
     return render_template('login.html',title='login',form=form)
+
+@app.route('/logout')
+def logout():
+    logout_user()
+    return redirect(url_for('home'))
