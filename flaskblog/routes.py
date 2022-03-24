@@ -1,31 +1,18 @@
+from operator import methodcaller
 import secrets
 import os
 from PIL import Image
 from flask import redirect , render_template ,url_for, flash, redirect, request
-from flaskblog.forms import RegistrationForm, LoginForm, UpdateAccountForm
+from flaskblog.forms import RegistrationForm, PostForm, LoginForm, UpdateAccountForm
 from flaskblog.models import User, Post
 from flaskblog import app, db, bcrypt
 from flask_login import login_user, current_user, logout_user, login_required
 
-class ost():
-    def __init__(self,author,title,content,date_posted):
-        self.author=author
-        self.title=title
-        self.content=content
-        self.date_posted=date_posted
-    def __del__(self):
-        print('The object is deleted')
-    def __str__(self):
-        return self.title+" BY "+self.author
-
-list=[]
-list.append(ost('Raman','The Story','the content','02-12-2005'))
-list.append(ost('Simon','Never Say Never','Content','02-10-2000'))
-
 @app.route("/")
 @app.route('/home')
 def home():
-    return render_template('home.html',posts=list)
+    posts=Post.query.all()
+    return render_template('home.html',posts=posts)
 
 @app.route('/about')
 def about():
@@ -94,3 +81,15 @@ def account():
         form.email.data=current_user.email
     image_file=url_for('static',filename='profile_pics/'+current_user.image_file)
     return render_template('account.html',title='Account',image_file=image_file,form=form)
+
+@app.route('/post/new',methods=["POST","GET"])
+@login_required
+def new_post():
+    form=PostForm()
+    if(form.validate_on_submit()):
+        post=Post(title=form.title.data,content=form.content.data,author=current_user)
+        db.session.add(post)
+        db.session.commit()
+        flash('Post has been created!','success')
+        return redirect(url_for('home'))
+    return render_template('create_post.html',title='New Post',form=form)
