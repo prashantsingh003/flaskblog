@@ -2,7 +2,7 @@ import secrets
 import os
 from PIL import Image
 from flask import redirect , render_template ,url_for, flash, redirect, request, abort
-from flaskblog.forms import RegistrationForm, PostForm, LoginForm, UpdateAccountForm
+from flaskblog.forms import RegistrationForm, PostForm, LoginForm, UpdateAccountForm, SearchForm
 from flaskblog.models import User, Post
 from flaskblog import app, db, bcrypt
 from flask_login import login_user, current_user, logout_user, login_required
@@ -11,7 +11,8 @@ from flask_login import login_user, current_user, logout_user, login_required
 @app.route('/home')
 def home():
     page=request.args.get('page',1,type=int)
-    posts=Post.query.order_by(Post.date_posted.desc()).paginate(per_page=5,page=page)
+    posts=Post.query.order_by(Post.date_posted.desc())
+    posts=posts.paginate(per_page=5,page=page)
     return render_template('home.html',posts=posts)
 
 @app.route('/about')
@@ -136,3 +137,27 @@ def user_posts(username):
         .order_by(Post.date_posted.desc())\
         .paginate(per_page=5,page=page)
     return render_template('user_posts.html',posts=posts,user=user)
+
+#Pass Stuff to navbar
+@app.context_processor
+def base():
+    form=SearchForm()
+    return dict(form=form)
+
+@app.route('/search',methods=['POST'])
+def search():
+    form=SearchForm()
+    posts=Post.query
+    if form.validate_on_submit():
+        page=request.args.get('page',1,type=int)
+        post.searched=form.searched.data
+        posts=posts.filter(Post.content.like('%'+post.searched+'%'))
+        posts=posts.paginate(per_page=5,page=page)
+        if posts.total>0:
+            flash("You searched for - \""+post.searched+"\"",'info')
+            return render_template('home.html',posts=posts)
+        else:
+            flash("No results for - \""+post.searched+"\"",'warning')        
+    else:
+        flash('search invalid','danger')
+    return redirect(url_for('home'))
